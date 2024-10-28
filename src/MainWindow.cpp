@@ -13,6 +13,7 @@
 #include "QLFilter.h"
 #include "QuickLaunch.h"
 
+#include <Button.h>
 #include <Catalog.h>
 #include <ControlLook.h>
 #include <Font.h>
@@ -66,34 +67,10 @@ MainWindow::MainWindow()
 	fSearchBox = new BTextControl("SearchBox", NULL, NULL, NULL);
 	fSearchBox->SetModificationMessage(new BMessage (NEW_FILTER));
 
-	fSetupButton = new BButton("Setup", B_TRANSLATE("Setup"), new BMessage(SETUP_BUTTON));
-	fSetupButton->SetTarget(be_app);
-	fHelpButton = new BButton("Help", B_TRANSLATE("Help"), new BMessage(HELP_BUTTON));
-	fHelpButton->SetTarget(be_app);
-
 	fListView = new MainListView();
 	fListView->SetExplicitMinSize(BSize(B_SIZE_UNSET, fIconHeight + 8));
 
 	fScrollView = new BScrollView("ScrollList", fListView, B_WILL_DRAW, false, true);
-
-	// Build the layout
-	float spacing = be_control_look->DefaultItemSpacing();
-
-	BLayoutBuilder::Group<>(this, B_VERTICAL, 0)
-		.AddGroup(B_HORIZONTAL, 0)
-			.Add(fSearchBox)
-			.AddStrut(spacing)
-			.Add(fSetupButton)
-			.AddStrut(spacing / 2)
-			.Add(fHelpButton)
-			.SetInsets(spacing / 2)
-			.End()
-		.AddGroup(B_VERTICAL, 0)
-			.Add(fScrollView)
-			.SetInsets(spacing / 2, 0, spacing / 2, spacing / 2)
-			.End();
-
-	fSearchBox->MakeFocus(true);
 
 	AddCommonFilter(new QLFilter);
 	fListView->SetInvocationMessage(new BMessage(RETURN_KEY));
@@ -108,6 +85,8 @@ MainWindow::MainWindow()
 	BString searchstring(GetSearchString());
 	if (searchstring == "")
 		_ShowFavorites();
+
+	fContentRect = Frame();
 }
 
 
@@ -316,6 +295,50 @@ MainWindow::QuitRequested()
 
 
 void
+MainWindow::BuildUI()
+{
+	float spacing = be_control_look->DefaultItemSpacing();
+
+	BButton* setupButton = new BButton("Setup", B_TRANSLATE("Setup"), new BMessage(SETUP_BUTTON));
+	setupButton->SetTarget(be_app);
+	BButton* helpButton = new BButton("Help", B_TRANSLATE("Help"), new BMessage(HELP_BUTTON));
+	helpButton->SetTarget(be_app);
+
+	BLayoutBuilder::Group<>(this, B_VERTICAL, 0)
+		.AddGroup(B_HORIZONTAL, 0)
+			.Add(fSearchBox)
+			.AddStrut(spacing)
+			.Add(setupButton)
+			.AddStrut(spacing / 2)
+			.Add(helpButton)
+			.SetInsets(spacing / 2)
+			.End()
+		.AddGroup(B_VERTICAL, 0)
+			.Add(fScrollView)
+			.SetInsets(spacing / 2, 0, spacing / 2, spacing / 2)
+			.End();
+
+	fSearchBox->MakeFocus(true);
+}
+
+
+void
+MainWindow::MoveContentTo(BPoint leftTop)
+{
+	MoveTo(leftTop);
+	fContentRect = Frame();
+}
+
+
+void
+MainWindow::ResizeContentTo(float width, float height)
+{
+	ResizeTo(width, height);
+	fContentRect = Frame();
+}
+
+
+void
 MainWindow::BuildAppList()
 {
 	fThreadId = spawn_thread(_AppListThread, "build app list", B_NORMAL_PRIORITY, this);
@@ -412,8 +435,8 @@ MainWindow::ResizeWindow()
 	count = (count < kMAX_DISPLAYED_ITEMS) ? count : kMAX_DISPLAYED_ITEMS;
 	BRect itemRect = fListView->ItemFrame(0);
 	float itemHeight = itemRect.Height();
-	float windowRest = Frame().Height() - fListView->Frame().Height();
-	ResizeTo(Bounds().Width(), count * itemHeight + windowRest + count - 2);
+	float windowRest = ContentFrame().Height() - fListView->Frame().Height();
+	ResizeContentTo(ContentFrame().Width(), count * itemHeight + windowRest + count - 2);
 }
 
 
@@ -620,4 +643,84 @@ MainWindow::_ShowFavorites()
 			fListView->AddItem(new MainListItem(&entry, appName, fIconHeight, true));
 		}
 	}
+}
+
+
+#pragma mark-- FocusWindow --
+
+
+FocusWindow::FocusWindow()
+{
+	SetFeel(B_MODAL_ALL_WINDOW_FEEL);
+	SetLook(B_NO_BORDER_WINDOW_LOOK);
+}
+
+
+FocusWindow::~FocusWindow()
+{
+}
+
+
+void
+FocusWindow::BuildUI()
+{
+
+	BScreen screen;
+	BRect screenRect = screen.Frame();
+
+	MoveTo(0, 0);
+	ResizeTo(screenRect.Width(), screenRect.Height());
+
+	rgb_color color = ui_color(B_DOCUMENT_TEXT_COLOR);
+	BBitmap* screenshot;
+	screen.GetBitmap(&screenshot, false, NULL);
+	// FIXME
+	// Surely there's an utility function to do this or something similar
+	// in a safe way and without assuming a data format.
+	int32 length = screenshot->BitsLength();
+	uint8* data = (uint8*)screenshot->Bits();
+	for (int32 i = 0; i < length; i += 4) {
+		data[i] = (data[i] + 2*color.blue) / 3;
+		data[i+1] = (data[i+1] + 2*color.green) / 3;
+		data[i+2] = (data[i+2] + 2*color.red) / 3;
+	}
+
+	BView* background = new BView(screenRect, "fake desktop", B_FOLLOW_ALL_SIDES, 0);
+	AddChild(background);
+	background->SetViewBitmap(screenshot);
+	delete screenshot;
+
+	float spacing = be_control_look->DefaultItemSpacing();
+
+	fContainer = new BView(Frame(), "container", B_FOLLOW_H_CENTER, 0);
+	AddChild(fContainer);
+	BLayoutBuilder::Group<>(fContainer, B_VERTICAL, 0)
+		.AddGroup(B_HORIZONTAL, 0)
+			.Add(fSearchBox)
+			.SetInsets(spacing / 2)
+			.End()
+		.AddGroup(B_VERTICAL, 0)
+			.Add(fScrollView)
+			.SetInsets(spacing / 2, 0, spacing / 2, spacing / 2)
+			.End();
+
+	fSearchBox->MakeFocus(true);
+}
+
+
+void
+FocusWindow::MoveContentTo(BPoint leftTop)
+{
+	fContainer->MoveTo(leftTop);
+	fContentRect = fContainer->Frame();
+}
+
+
+void
+FocusWindow::ResizeContentTo(float width, float height)
+{
+	width = max(width, fContainer->MinSize().width);
+	height = max(height, fContainer->MinSize().height);
+	fContainer->ResizeTo(width, height);
+	fContentRect = fContainer->Frame();
 }

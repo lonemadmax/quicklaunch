@@ -21,7 +21,7 @@
 
 class QLApp : public BApplication {
 public:
-					QLApp();
+					QLApp(bool focusMode);
 	virtual			~QLApp();
 
 	void			AboutRequested();

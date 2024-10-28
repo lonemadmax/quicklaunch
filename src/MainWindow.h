@@ -15,7 +15,6 @@
 
 #include <Alert.h>
 #include <Application.h>
-#include <Button.h>
 #include <Entry.h>
 #include <FindDirectory.h>
 #include <GroupLayout.h>
@@ -49,6 +48,12 @@ public:
 					MainWindow();
 	virtual			~MainWindow();
 
+	virtual	void	BuildUI();
+	virtual	void	MoveContentTo(BPoint leftTop);
+	virtual	void	ResizeContentTo(float width, float height);
+	BRect			ContentFrame()
+						{return fContentRect;};
+
 	void			MessageReceived(BMessage* message);
 	bool			QuitRequested();
 
@@ -72,15 +77,32 @@ private:
 	void			_AddDroppedAsFav(BMessage* message);
 	void			_ShowFavorites();
 
+protected:
+	BTextControl*	fSearchBox;
+	BScrollView*	fScrollView;
+	BRect			fContentRect;
+
+private:
 	thread_id		fThreadId;
 	bool			fBusy;
 
 	BObjectList<AppListItem> fAppList;
 	int32			fIconHeight;
-	BTextControl*	fSearchBox;
-	BButton*		fSetupButton;
-	BButton*		fHelpButton;
-	BScrollView*	fScrollView;
+};
+
+
+class FocusWindow : public MainWindow {
+public:
+					FocusWindow();
+	virtual			~FocusWindow();
+
+	virtual	void	BuildUI();
+	virtual	void	MoveContentTo(BPoint leftTop);
+	virtual	void	ResizeContentTo(float width, float height);
+
+private:
+	BView*			fContainer;
+
 };
 
 #endif // QL_WINDOW_H

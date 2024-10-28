@@ -27,7 +27,7 @@ const char* kApplicationName = "QuickLaunch";
 #define B_TRANSLATION_CONTEXT "Application"
 
 
-QLApp::QLApp()
+QLApp::QLApp(bool focusMode)
 	:
 	BApplication(kApplicationSignature),
 	fSetupWindow(NULL),
@@ -44,7 +44,11 @@ QLApp::QLApp()
 	fSettings.InitLists();
 
 	fSetupWindow = new SetupWindow(fSettings.GetSetupWindowFrame());
-	fMainWindow = new MainWindow();
+	if (focusMode)
+		fMainWindow = new FocusWindow();
+	else
+		fMainWindow = new MainWindow();
+	fMainWindow->BuildUI();
 }
 
 
@@ -285,8 +289,8 @@ QLApp::ReadyToRun()
 {
 	BRect frame = fSettings.GetMainWindowFrame();
 
-	fMainWindow->MoveTo(frame.LeftTop());
-	fMainWindow->ResizeTo(frame.right - frame.left, 0);
+	fMainWindow->MoveContentTo(frame.LeftTop());
+	fMainWindow->ResizeContentTo(frame.right - frame.left, 0);
 	fMainWindow->Show();
 
 	// Initial filtering. Shows favorites and resizes window correctly
@@ -445,9 +449,9 @@ QLApp::_SetMainWindowFeel(window_feel feel)
 
 
 int
-main()
+main(int argc, char** argv)
 {
-	QLApp app;
+	QLApp app(argc == 2 && strcmp(argv[1], "--focus-mode") == 0);
 	app.Run();
 	return 0;
 }

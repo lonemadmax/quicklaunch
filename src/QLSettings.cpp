@@ -110,7 +110,7 @@ QLSettings::SaveSettings()
 		return;
 
 	BMessage settings;
-	settings.AddRect("main window frame", my_app->fMainWindow->Frame());
+	settings.AddRect("main window frame", my_app->fMainWindow->ContentFrame());
 	settings.AddRect("setup window frame",
 		my_app->fSetupWindow->ConvertToScreen(my_app->fSetupWindow->Bounds()));
 	settings.AddInt32("deskbar", fDeskbar);
