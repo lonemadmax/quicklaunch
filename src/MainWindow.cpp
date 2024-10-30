@@ -330,8 +330,10 @@ MainWindow::FilterAppList()
 	if (fBusy)
 		return;
 
-	if (fAppList.IsEmpty())
+	if (fAppList.IsEmpty()) {
 		BuildAppList();
+		return;
+	}
 
 	QLSettings& settings = my_app->Settings();
 	BString searchtext = GetSearchString();
@@ -431,6 +433,9 @@ MainWindow::_AppListThread(void* _self)
 void
 MainWindow::_BuildAppList()
 {
+	if (fBusy)
+		return;
+
 	fBusy = true;
 
 	fAppList.MakeEmpty();
