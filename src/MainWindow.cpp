@@ -63,6 +63,7 @@ MainWindow::MainWindow()
 		B_FLOATING_ALL_WINDOW_FEEL,
 		B_NOT_ZOOMABLE | B_ASYNCHRONOUS_CONTROLS | B_QUIT_ON_WINDOW_CLOSE | B_FRAME_EVENTS
 			| B_AUTO_UPDATE_SIZE_LIMITS | B_CLOSE_ON_ESCAPE),
+	fThreadId(-1),
 	fBusy(false),
 	fAppList(20, true)
 {
@@ -473,6 +474,11 @@ MainWindow::MessageReceived(BMessage* message)
 bool
 MainWindow::QuitRequested()
 {
+	if (fThreadId >= 0) {
+		status_t err;
+		wait_for_thread(fThreadId, &err);
+	}
+
 	return true;
 }
 
